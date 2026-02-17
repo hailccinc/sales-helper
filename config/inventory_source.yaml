@@ -1,0 +1,24 @@
+# Inventory Source Configuration
+# ─────────────────────────────────────────────────────────
+
+# Mode: "csv" or "powerbi"
+mode: "csv"
+
+# CSV mode settings
+csv:
+  # Path to inventory CSV file (can also be set in the UI)
+  path: ""
+  # Expected columns (case-insensitive):
+  #   - part_number (required)
+  #   - on_hand / qty_on_hand / available (required)
+  #   - backorder (optional)
+  #   - eta (optional)
+  #   - location (optional)
+
+# Power BI REST mode settings (advanced, requires Entra app registration)
+powerbi:
+  tenant_id: ""
+  client_id: ""
+  dataset_id: ""
+  table_name: "Inventory"
+  # See docs/powerbi_rest.md for setup instructions

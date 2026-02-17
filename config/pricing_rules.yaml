@@ -1,0 +1,117 @@
+# Pricing Rules Configuration
+# ─────────────────────────────────────────────────────────
+
+# Distributor classification keywords (matched against filenames, case-insensitive)
+distributors:
+  welsco_nexair:
+    display_name: "Welsco/Nexair"
+    filename_keywords: ["welsco", "nexair", "welsco:nexair", "welsco:nexar"]
+    payer_ids: ["6118"]
+  red_ball_oxygen:
+    display_name: "Red Ball Oxygen"
+    filename_keywords: ["red ball", "redball", "red_ball", "rbo"]
+    payer_ids: ["6213"]
+
+# Universal price files — loaded into ALL distributors regardless of PAYER column
+# Matched against filename (case-insensitive). If a file matches, its data is
+# merged into every distributor's master/end_user/location bucket.
+universal_keywords: ["alcotec"]
+
+# List type classification keywords (matched against filenames, case-insensitive)
+# Priority: lower number = higher precedence when resolving prices
+list_types:
+  location:
+    filename_keywords: ["location", "loc", "branch", "store", "alcotec special"]
+    priority: 1
+  end_user:
+    filename_keywords: ["enduser", "end_user", "end user", "eup", "special pricing"]
+    priority: 2
+  master:
+    filename_keywords: ["master", "base", "pricelist", "price list", "price_list"]
+    priority: 3
+
+# Column normalization — maps normalized field names to candidate header names.
+# The loader tries each candidate: first exact match (case-insensitive), then "contains" match.
+column_mappings:
+  # Master / pricelist files
+  master:
+    part_number:
+      exact: ["MATERIAL", "Part Number", "Part_Number", "PartNumber", "Item", "SKU", "Material Number"]
+      contains: ["material", "part", "item", "sku"]
+    description:
+      exact: ["DESCRIPTION", "Material Description", "Desc", "Product Description", "Item Description"]
+      contains: ["desc", "product name"]
+    uom:
+      exact: ["UOM", "Unit", "Unit of Measure", "Units"]
+      contains: ["uom", "unit"]
+    package_qty:
+      exact: ["STND PKG", "Standard Package", "Std Pkg", "Pack Qty", "Package Qty"]
+      contains: ["pkg", "pack"]
+    weight:
+      exact: ["WGT", "Weight", "Net Weight"]
+      contains: ["weight", "wgt"]
+    list_price:
+      exact: ["LIST", "List Price", "ListPrice", "MSRP", "Retail"]
+      contains: ["list", "msrp", "retail"]
+    tier_price:
+      exact: ["Tier_Price", "Tier Price", "TierPrice", "Distributor Price", "Dist Price"]
+      contains: ["tier"]
+    cmg_price:
+      exact: ["Customer_Material_Group_Price", "CMG Price", "CMG_Price"]
+      contains: ["customer_material", "cmg"]
+    upc:
+      exact: ["UPC", "UPC Code", "Barcode"]
+      contains: ["upc", "barcode"]
+    product_class:
+      exact: ["CLASS", "Product Class", "Category"]
+      contains: ["class", "categ"]
+
+  # Special pricing files (end-user and location-specific)
+  special:
+    part_number:
+      exact: ["Material", "Material Number", "Part Number", "Item", "SKU"]
+      contains: ["material", "part", "item", "sku"]
+    description:
+      exact: ["Material Description", "Description", "Desc", "Product Description"]
+      contains: ["desc"]
+    uom:
+      exact: ["UOM", "Unit", "Unit of Measure"]
+      contains: ["uom", "unit"]
+    price:
+      exact: ["Price", "Net Price", "Special Price", "Unit Price"]
+      contains: ["price"]
+    alloy_surcharge:
+      exact: ["Alloy_Surcharge", "Alloy Surcharge", "AlloySurcharge"]
+      contains: ["alloy"]
+    tariff_surcharge:
+      exact: ["Tariff_Surcharge", "Tariff Surcharge", "TariffSurcharge"]
+      contains: ["tariff"]
+    customer_name:
+      exact: ["Customer Name", "CustomerName", "Sold-To Name"]
+      contains: ["customer name"]
+    end_user_name:
+      exact: ["End User Name", "EndUserName", "End-User"]
+      contains: ["end user"]
+    end_user_acct:
+      exact: ["SAP End User Acct", "End User Acct", "EU Account"]
+      contains: ["end user acct"]
+    sap_acct:
+      exact: ["SAP Acct", "SAPAcct", "Account"]
+      contains: ["sap acct"]
+    address:
+      exact: ["Address", "Street"]
+      contains: ["address", "street"]
+    city:
+      exact: ["City"]
+      contains: ["city"]
+    state:
+      exact: ["State", "ST"]
+      contains: ["state"]
+
+# Search settings
+search:
+  max_results: 25
+  min_score: 40
+
+# Enrichment cache location (relative to project root)
+enrichment_cache: "data/descriptions.json"
