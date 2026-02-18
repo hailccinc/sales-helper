@@ -109,57 +109,66 @@ def load_inventory_csv(csv_path: str) -> tuple[pd.DataFrame | None, str]:
         return None, f"Error reading {path.name}: {e}"
 
 
-def check_availability(part_number: str, distributor: str = "", csv_path: str = "") -> dict:
+def check_availability(part_number: str, distributor: str = "", csv_path: str = "",
+                       inventory_df: "pd.DataFrame | None" = None) -> dict:
     """
     Check inventory availability for a part number.
 
     Returns dict with keys: part_number, status, rows, message
     Each row has: on_hand, backorder, eta, location
+
+    If inventory_df is provided, uses it directly (for uploaded files).
+    Otherwise falls back to csv_path or config file.
     """
     global _inventory_df, _inventory_path
 
-    config = _load_config()
-    mode = config.get("mode", "csv")
+    # Use provided DataFrame (from file upload) if available
+    active_df = inventory_df
 
-    if mode == "powerbi":
-        return {
-            "part_number": part_number,
-            "status": "not_configured",
-            "message": "Power BI not configured. See docs/powerbi_rest.md for setup.",
-            "rows": [],
-        }
+    if active_df is None:
+        config = _load_config()
+        mode = config.get("mode", "csv")
 
-    # CSV mode
-    # Try to load if not loaded or path changed
-    target_path = csv_path or config.get("csv", {}).get("path", "")
-    if not target_path:
-        return {
-            "part_number": part_number,
-            "status": "not_configured",
-            "message": "No inventory CSV configured. Set path in sidebar or config/inventory_source.yaml.",
-            "rows": [],
-        }
-
-    if _inventory_df is None or _inventory_path != str(Path(target_path).expanduser()):
-        df, err = load_inventory_csv(target_path)
-        if err:
+        if mode == "powerbi":
             return {
                 "part_number": part_number,
-                "status": "error",
-                "message": err,
+                "status": "not_configured",
+                "message": "Upload an inventory CSV export, or view the Inventory tab.",
                 "rows": [],
             }
 
-    if _inventory_df is None:
+        # CSV mode
+        target_path = csv_path or config.get("csv", {}).get("path", "")
+        if not target_path:
+            return {
+                "part_number": part_number,
+                "status": "not_configured",
+                "message": "",
+                "rows": [],
+            }
+
+        if _inventory_df is None or _inventory_path != str(Path(target_path).expanduser()):
+            df, err = load_inventory_csv(target_path)
+            if err:
+                return {
+                    "part_number": part_number,
+                    "status": "error",
+                    "message": err,
+                    "rows": [],
+                }
+
+        active_df = _inventory_df
+
+    if active_df is None:
         return {
             "part_number": part_number,
             "status": "not_configured",
-            "message": "Inventory data not loaded",
+            "message": "",
             "rows": [],
         }
 
     pn = part_number.strip()
-    matches = _inventory_df[_inventory_df["part_number"] == pn]
+    matches = active_df[active_df["part_number"] == pn]
 
     if matches.empty:
         return {

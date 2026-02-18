@@ -61,9 +61,14 @@ PRODUCT_LINES: dict[str, tuple[str, str]] = {
     "DS II 70 ULT":     ("Dual Shield II 70 Ultra",     "Flux-Cored Wire (E71T-1)"),
     "DS II 71":         ("Dual Shield II 71",           "Flux-Cored Wire"),
     "DS II 71 ULT":     ("Dual Shield II 71 Ultra",     "Flux-Cored Wire (E71T-1)"),
+    "DS 710X":          ("Dual Shield 710X",            "Flux-Cored Wire"),
     "DS 7100 ULT":      ("Dual Shield 7100 Ultra",      "Flux-Cored Wire (E71T-1M)"),
     "DS 7100 LC":       ("Dual Shield 7100 Low Carbon", "Flux-Cored Wire"),
+    "DS 7100 SR":       ("Dual Shield 7100 SR",         "Flux-Cored Wire"),
+    "DS 111RB":         ("Dual Shield 111RB",           "Flux-Cored Wire"),
     "DS T":             ("Dual Shield T",               "Flux-Cored Wire"),
+    "DS T 75":          ("Dual Shield T-75",            "Flux-Cored Wire"),
+    "DS R 70":          ("Dual Shield R 70",            "Flux-Cored Wire"),
     "DS R 70 ULT":      ("Dual Shield R 70 Ultra",      "Flux-Cored Wire"),
     "ESAB 71":          ("ESAB 71",                     "Flux-Cored Wire"),
     # Self-shielded flux-cored
@@ -688,11 +693,15 @@ def _match_product_line(desc: str) -> tuple[str, str] | None:
 def _extract_diameter(desc: str) -> str | None:
     """Extract diameter from description."""
     d = desc.upper()
-    # 3-digit decimal (045, 035, etc.)
-    m = re.search(r'\b(\d{3})\s*X', d)
-    if m and m.group(1) in DIAMETER_MAP:
-        return DIAMETER_MAP[m.group(1)]
-    # Fraction diameter
+    # 3-digit decimal (045, 035, etc.) — find ALL matches and use the first valid one
+    for m in re.finditer(r'(\d{3})\s*X', d):
+        if m.group(1) in DIAMETER_MAP:
+            return DIAMETER_MAP[m.group(1)]
+    # Fraction diameter (1 8, 3 32, 5 32, 1 16, etc.) followed by X
+    for code, readable in FRACTION_DIAMETERS.items():
+        if re.search(code.replace(' ', r'\s+') + r'\s*X', d):
+            return readable
+    # Fraction diameter without X (may appear anywhere)
     for code, readable in FRACTION_DIAMETERS.items():
         if re.search(r'\b' + code.replace(' ', r'\s+') + r'\b', d):
             return readable
@@ -754,6 +763,24 @@ def decode_description(desc: str) -> str:
     if line_match:
         full_name, prod_type = line_match
         desc_upper = desc.upper()
+
+        # Guard: short product codes (2-3 chars like DS, CS, SA, AS, AA, SW, CW)
+        # can false-match hardgoods parts. If description has no diameter pattern
+        # AND no X-delimited size AND the remainder looks like a hardgoods name,
+        # fall through to hardgoods categorization instead.
+        matched_code = None
+        for code in sorted(PRODUCT_LINES.keys(), key=len, reverse=True):
+            if desc_upper.startswith(code + " ") or desc_upper == code:
+                matched_code = code
+                break
+        if matched_code and len(matched_code) <= 3:
+            remainder = desc_upper[len(matched_code):].strip()
+            has_size_pattern = bool(re.search(r'\d{3}\s*X|\d+\s+\d+\s*X', remainder))
+            if not has_size_pattern:
+                # Check if remainder looks like a hardgoods part
+                hardgood = _categorize_hardgood(desc)
+                if hardgood:
+                    return f"{hardgood} | {desc}"
 
         # 36" cut-length items are TIG rods, not MIG wire / SAW wire
         # Pattern: X36 in description means 36-inch straight rod for TIG welding

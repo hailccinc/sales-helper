@@ -7,6 +7,7 @@ Run with:  streamlit run app.py
 import math
 from datetime import datetime
 
+import pandas as pd
 import streamlit as st
 import yaml
 from pathlib import Path
@@ -184,7 +185,9 @@ def show_product_detail(
     pricing = get_pricing(part_number, distributor_key, price_data,
                           selected_end_user=selected_end_user,
                           selected_location=selected_location)
-    avail = check_availability(part_number, distributor_key, csv_path=inventory_csv_path)
+    inv_df = st.session_state.get("_inventory_df")
+    avail = check_availability(part_number, distributor_key, csv_path=inventory_csv_path,
+                               inventory_df=inv_df)
     dist_name = rules["distributors"][distributor_key]["display_name"]
 
     # Enriched description
@@ -395,8 +398,33 @@ with st.sidebar:
         if loc_choice != "(All / None)":
             selected_location = loc_choice
 
-    # Inventory CSV path
-    inv_path = st.text_input("Inventory CSV (optional)", value="", placeholder="~/Desktop/inventory.csv")
+    # Inventory CSV upload
+    with st.expander("Inventory File (optional)"):
+        inv_upload = st.file_uploader(
+            "Upload inventory export",
+            type=["csv", "xlsx", "tsv"],
+            help="Export from Power BI or your ERP, then upload here. Needs part_number + on_hand columns.",
+            key="inv_upload",
+        )
+        if inv_upload:
+            import io as _io
+            from src.inventory import _normalize_inv_columns
+            try:
+                if inv_upload.name.endswith(".csv"):
+                    inv_df = pd.read_csv(_io.BytesIO(inv_upload.getvalue()))
+                elif inv_upload.name.endswith(".xlsx"):
+                    inv_df = pd.read_excel(_io.BytesIO(inv_upload.getvalue()), engine="openpyxl")
+                else:
+                    inv_df = pd.read_csv(_io.BytesIO(inv_upload.getvalue()), sep="\t")
+                normalized_inv = _normalize_inv_columns(inv_df)
+                if "part_number" in normalized_inv.columns and "on_hand" in normalized_inv.columns:
+                    st.session_state._inventory_df = normalized_inv
+                    st.caption(f"Loaded {len(normalized_inv)} inventory rows")
+                else:
+                    st.error(f"Missing required columns. Found: {list(inv_df.columns)}")
+            except Exception as e:
+                st.error(f"Error: {e}")
+    inv_path = ""
 
     st.divider()
 
