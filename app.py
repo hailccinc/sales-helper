@@ -452,7 +452,7 @@ with st.sidebar:
 
 # ── Main content: Search ───────────────────────────────────
 
-search_tab, basket_tab = st.tabs(["Search", f"Quote Basket ({len(st.session_state.basket)})"])
+search_tab, basket_tab, inventory_tab = st.tabs(["Search", f"Quote Basket ({len(st.session_state.basket)})", "Inventory"])
 
 with search_tab:
     query = st.text_input(
@@ -647,3 +647,26 @@ with basket_tab:
             if st.button("Clear Basket", use_container_width=True, type="secondary"):
                 st.session_state.basket = []
                 st.rerun()
+
+
+# ── Inventory tab (Power BI embed) ────────────────────────
+
+POWERBI_REPORT_URL = (
+    "https://app.powerbi.com/reportEmbed"
+    "?reportId=0c44a616-6a10-4ce2-bb6a-65e60c75a5bd"
+    "&autoAuth=true"
+    "&ctid=ba47116b-6e71-4c27-89e4-3b4ad1994f4a"
+    "&pageName=8e8690c0c5490ca1b902"
+    "&bookmarkGuid=117cd99c-c02f-4c4f-9221-67de10894248"
+)
+
+POWERBI_DIRECT_URL = (
+    "https://app.powerbi.com/groups/me/reports/0c44a616-6a10-4ce2-bb6a-65e60c75a5bd"
+    "/8e8690c0c5490ca1b902"
+    "?bookmarkGuid=117cd99c-c02f-4c4f-9221-67de10894248"
+    "&ctid=ba47116b-6e71-4c27-89e4-3b4ad1994f4a"
+)
+
+with inventory_tab:
+    st.markdown(f"[Open in Power BI]({POWERBI_DIRECT_URL})")
+    st.components.v1.iframe(POWERBI_REPORT_URL, height=700, scrolling=True)
